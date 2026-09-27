@@ -10,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -123,8 +124,13 @@ fun TransfersScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .background(colors.bg)
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp),
+                .padding(top = innerPadding.calculateTopPadding()),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = 8.dp,
+                bottom = innerPadding.calculateBottomPadding() + 96.dp
+            ),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item(key = "header_spacer") {
@@ -352,7 +358,10 @@ private fun BatchProgressCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Box(
                         modifier = Modifier
                             .size(32.dp)
@@ -368,28 +377,34 @@ private fun BatchProgressCard(
                         )
                     }
                     Spacer(modifier = Modifier.width(10.dp))
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Overall Batch Progress",
                             fontSize = 13.sp,
                             fontFamily = BodySansFont,
                             fontWeight = FontWeight.SemiBold,
-                            color = colors.text
+                            color = colors.text,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             text = "$completedCount of $totalCount files uploaded${if (failedCount > 0) " · $failedCount failed" else ""}",
                             fontSize = 11.sp,
                             fontFamily = NumericMonoFont,
-                            color = if (failedCount > 0) colors.danger else colors.textDim
+                            color = if (failedCount > 0) colors.danger else colors.textDim,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "$percent%",
                     fontSize = 14.sp,
                     fontFamily = NumericMonoFont,
                     fontWeight = FontWeight.Bold,
-                    color = colors.violet
+                    color = colors.violet,
+                    maxLines = 1
                 )
             }
             Spacer(modifier = Modifier.height(10.dp))
@@ -488,7 +503,10 @@ private fun TransferRowCard(
                         overflow = TextOverflow.Ellipsis
                     )
                     Spacer(modifier = Modifier.height(2.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Text(
                             text = when {
                                 transfer.isChunking -> "Chunking…"
@@ -509,13 +527,17 @@ private fun TransferRowCard(
                                 FileStatus.UPLOADING, FileStatus.DOWNLOADING -> colors.violet
                                 FileStatus.PAUSED -> colors.textDim
                                 else -> colors.textFaint
-                            }
+                            },
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
                         )
                         Text(
                             text = " · ${ChecksumUtil.formatBytes(transfer.totalBytes)}",
                             fontSize = 11.sp,
                             fontFamily = NumericMonoFont,
-                            color = colors.textDim
+                            color = colors.textDim,
+                            maxLines = 1
                         )
                     }
                 }
@@ -652,42 +674,53 @@ private fun TransferRowCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Primary Metrics Row: Chunk progress, overall percent, transferred / total bytes
+            // 1. Chunk Progress Row (Full-width row dedicated to chunk status)
+            val chunkProgressLabel = when {
+                transfer.isUpload && transfer.status == FileStatus.UPLOADING && transfer.activeConcurrentChunks > 0 -> {
+                    "${transfer.activeConcurrentChunks} of ${transfer.totalChunks} chunks uploading, ${transfer.completedChunksCount} complete · $percent%"
+                }
+                transfer.isUpload && transfer.completedChunksCount > 0 -> {
+                    "Chunk ${transfer.completedChunksCount} of ${transfer.totalChunks} complete · $percent%"
+                }
+                else -> "Chunk ${transfer.currentChunk} of ${transfer.totalChunks} · $percent%"
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val chunkProgressLabel = when {
-                    transfer.isUpload && transfer.status == FileStatus.UPLOADING && transfer.activeConcurrentChunks > 0 -> {
-                        "${transfer.activeConcurrentChunks} of ${transfer.totalChunks} chunks uploading, ${transfer.completedChunksCount} complete · $percent%"
-                    }
-                    transfer.isUpload && transfer.completedChunksCount > 0 -> {
-                        "Chunk ${transfer.completedChunksCount} of ${transfer.totalChunks} complete · $percent%"
-                    }
-                    else -> "Chunk ${transfer.currentChunk} of ${transfer.totalChunks} · $percent%"
-                }
-
                 Text(
                     text = chunkProgressLabel,
                     fontSize = 11.sp,
                     fontFamily = NumericMonoFont,
                     fontWeight = FontWeight.SemiBold,
-                    color = colors.text
-                )
-
-                Text(
-                    text = "${ChecksumUtil.formatBytes(transfer.bytesTransferred)} / ${ChecksumUtil.formatBytes(transfer.totalBytes)}",
-                    fontSize = 11.sp,
-                    fontFamily = NumericMonoFont,
-                    fontWeight = FontWeight.Medium,
-                    color = colors.textDim
+                    color = colors.text,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Secondary Metrics Row: Transfer speed and ETA
+            // 2. Byte Progress Row (Dedicated row below chunk-progress to prevent text collision)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "${ChecksumUtil.formatBytes(transfer.bytesTransferred)} / ${ChecksumUtil.formatBytes(transfer.totalBytes)}",
+                    fontSize = 11.sp,
+                    fontFamily = NumericMonoFont,
+                    fontWeight = FontWeight.Medium,
+                    color = colors.textDim,
+                    maxLines = 1
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // 3. Secondary Metrics Row: Transfer speed and ETA
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -712,7 +745,10 @@ private fun TransferRowCard(
                     fontSize = 11.sp,
                     fontFamily = NumericMonoFont,
                     fontWeight = FontWeight.Medium,
-                    color = if (transfer.status == FileStatus.UPLOADING || transfer.status == FileStatus.DOWNLOADING) colors.violet else colors.textFaint
+                    color = if (transfer.status == FileStatus.UPLOADING || transfer.status == FileStatus.DOWNLOADING) colors.violet else colors.textFaint,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
                 )
 
                 val etaText = when (transfer.status) {
@@ -734,12 +770,14 @@ private fun TransferRowCard(
                 }
 
                 if (etaText.isNotEmpty()) {
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = etaText,
                         fontSize = 11.sp,
                         fontFamily = NumericMonoFont,
                         fontWeight = FontWeight.Normal,
-                        color = colors.textFaint
+                        color = colors.textFaint,
+                        maxLines = 1
                     )
                 }
             }
@@ -768,7 +806,8 @@ private fun TransferRowCard(
                         fontFamily = BodySansFont,
                         color = colors.danger,
                         maxLines = 4,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
                     )
                 }
             }

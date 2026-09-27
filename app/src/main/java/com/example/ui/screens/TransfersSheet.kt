@@ -390,7 +390,8 @@ private fun TransferItemCard(
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     val rate = if (transfer.speedBytesPerSec > 0) " · ${ChecksumUtil.formatSpeed(transfer.speedBytesPerSec)}" else ""
                     Text(
@@ -398,8 +399,12 @@ private fun TransferItemCard(
                         fontSize = 10.5.sp,
                         fontFamily = NumericMonoFont,
                         color = colors.violet,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
                     )
+                    Spacer(modifier = Modifier.width(8.dp))
                     val detail = if (transfer.etaSeconds != null && transfer.speedBytesPerSec > 0) {
                         "${ChecksumUtil.formatEta(transfer.etaSeconds)} · ${ChecksumUtil.formatFileSize(transfer.bytesTransferred)} / ${ChecksumUtil.formatFileSize(transfer.totalBytes)}"
                     } else {
@@ -409,7 +414,8 @@ private fun TransferItemCard(
                         text = detail,
                         fontSize = 10.5.sp,
                         fontFamily = NumericMonoFont,
-                        color = colors.textFaint
+                        color = colors.textFaint,
+                        maxLines = 1
                     )
                 }
             }
